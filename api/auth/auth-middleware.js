@@ -1,6 +1,8 @@
 const { JWT_SECRET } = require("../secrets"); // use this secret!
 const { findBy } = require('../users/users-model.js')
+const jwt = require('jsonwebtoken')
 const restricted = (req, res, next) => {
+  //only want users with a valid token to get to these endpoints. 
   /*
     If the user does not provide a token in the Authorization header:
     status 401
@@ -17,6 +19,18 @@ const restricted = (req, res, next) => {
     Put the decoded token in the req object, to make life easier for middlewares downstream!
   */
 
+  const token = req.headers.authorization
+  if (!token) { //if no token
+    return next({ status: 401, message: 'Token required' })
+  }
+  jwt.verify(token, JWT_SECRET, (err, decodedToken) => {
+    if (err) { // if err exists... (this could be if the token is expired, signature doesn't match...etc. )
+      next({ status: 401, message: "Token invalid" })
+    } else {
+      req.decodedToken = decodedToken //tack the decoded Toekn to the req object.... might be useful for endpoints and middlware down the pipeline
+      next()
+    }
+  }) //takes 3 arguments, the token, the secret we used to sign the token from the environment, and a call back to deal with the result
 }
 
 const only = role_name => (req, res, next) => {
